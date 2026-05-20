@@ -17,7 +17,6 @@ function App() {
             <Route path="/" element={<Navigate to="/login" />} />
             <Route path="/login" element={<Login />} />
             <Route path="/inscription" element={<Inscription />} />
-            {/* Placeholder for protected routes */}
             <Route path="/dashboard" element={<Dashboard />} /> 
             <Route path="/clients" element={<Clients />} /> 
             <Route path="/factures" element={<Factures />} /> 

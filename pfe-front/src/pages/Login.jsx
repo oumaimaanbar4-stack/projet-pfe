@@ -1,39 +1,81 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {Box,Paper,TextField,Button,Typography,Container,AppBar,Toolbar,Link,IconButton,InputAdornment} from '@mui/material';
+import { 
+  Box, Paper, TextField, Button, Typography, Container, 
+  AppBar, Toolbar, Link, IconButton, InputAdornment, Alert 
+} from '@mui/material';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import PersonIcon from '@mui/icons-material/Person';
 import LockIcon from '@mui/icons-material/Lock';
 
+// CRITICAL: Import your configured axios instance
+import api from '../services/api'; 
+
 const Login = () => {
-  // State for password visibility toggle
-  const [showPassword, setShowPassword] = useState(false);
-  
-  // State for form inputs (for state management next step)
+  const navigate = useNavigate();
+
+  // State Management
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-  // For now, we manually navigate. 
-  // Later, this is where you'll call your Laravel API to check the email/password.
-  navigate('/dashboard');
-  }
-  const handleClickShowPassword = () => {
-    setShowPassword(!showPassword);
-  };
+  // Password Visibility Toggles
+  const handleClickShowPassword = () => setShowPassword(!showPassword);
+  const handleMouseDownPassword = (event) => event.preventDefault();
 
-  const handleMouseDownPassword = (event) => {
-    event.preventDefault();
+  // The Fixed API Login Sequence
+  const handleLogin = async (e) => {
+    e.preventDefault(); // Prevents page reload
+    setErrorMsg('');
+    setLoading(true);
+
+    // Basic Validation
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg('Veuillez remplir tous les champs obligatoires.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // 1. Send authentication request to Laravel backend
+      const response = await api.post('/login', {
+        email: email,
+        password: password,
+      });
+
+      // 2. Validate response payload
+      if (response.data && response.data.access_token) {
+        // 3. Store token cleanly (matches your interceptor key 'token')
+        localStorage.setItem('token', response.data.access_token);
+        
+        // 4. Safely reroute inside the authorized ecosystem
+        navigate('/dashboard');
+      } else {
+        setErrorMsg('Structure de réponse invalide reçue du serveur.');
+      }
+    } catch (error) {
+      console.error("Login Error:", error);
+      
+      // Handle server validation and mismatch responses (like 401 Identifiants invalides)
+      if (error.response && error.response.data) {
+        setErrorMsg(error.response.data.message || 'Identifiants invalides.');
+      } else {
+        setErrorMsg('Impossible de contacter le serveur backend (localhost:8000).');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
-  const navigate = useNavigate();
 
   return (
     <Box
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        minHeight: '100vh', // Ensures footer stays at the bottom
+        minHeight: '100vh',
         backgroundColor: (theme) => theme.palette.background.default,
       }}
     >
@@ -41,7 +83,6 @@ const Login = () => {
       <AppBar position="static" color="inherit" elevation={1} sx={{ bgcolor: 'white' }}>
         <Toolbar sx={{ justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            {/* LOGO FROM PUBLIC FOLDER */}
             <img 
               src="/logo invoice.jpg" 
               alt="InvoiceFlow Logo" 
@@ -64,11 +105,11 @@ const Login = () => {
         </Toolbar>
       </AppBar>
 
-      {/* --- ATTRACTIVE HERO SECTION + LOGIN CARD --- */}
+      {/* --- HERO SECTION + LOGIN CARD --- */}
       <Container
         maxWidth="lg"
         sx={{
-          flex: 1, // Pushes footer down
+          flex: 1,
           display: 'flex',
           flexDirection: { xs: 'column', md: 'row' },
           alignItems: 'center',
@@ -77,18 +118,15 @@ const Login = () => {
           py: { xs: 6, md: 10 },
         }}
       >
-       
-        {/* Left Side: Professional Marketing Content */}
+        {/* Left Side: Marketing Content */}
         <Box sx={{ flex: 1.5, textAlign: { xs: 'center', md: 'left' } }}>
           <Typography 
             variant="h2" 
-            color="primary" 
             sx={{ 
               fontWeight: 800, 
               mb: 2, 
               fontSize: { xs: '2rem', sm: '2.5rem', md: '3.5rem' }, 
               color: '#1a237e',
-              whiteSpace: 'nowrap', // Forces the text to stay on one line
             }}
           >
             Manage your invoices <br/>
@@ -111,10 +149,10 @@ const Login = () => {
         {/* Right Side: Professional Login Card */}
         <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <Paper
-            elevation={4} // Deeper shadow for professional focus
+            elevation={4}
             sx={{
               p: { xs: 4, md: 6 },
-              borderRadius: 4, // More rounded corners
+              borderRadius: 4,
               width: '100%',
               maxWidth: 450,
               display: 'flex',
@@ -122,20 +160,28 @@ const Login = () => {
               alignItems: 'center',
             }}
           >
-            {/* Small centered logo inside card */}
             <img src="/logo invoice.jpg" alt="InvoiceFlow" style={{ height: '70px', marginBottom: '20px' }} />
             
             <Typography variant="h4" color="textPrimary" sx={{ fontWeight: 700, mb: 3 }}>
               Se Connecter
             </Typography>
 
-            <form style={{ width: '100%' }}>
+            {/* Error Message Box */}
+            {errorMsg && (
+              <Alert severity="error" sx={{ width: '100%', mb: 3, borderRadius: 2 }}>
+                {errorMsg}
+              </Alert>
+            )}
+
+            <Box component="form" onSubmit={handleLogin} sx={{ width: '100%' }}>
               <TextField
                 fullWidth
                 label="Email *"
                 variant="outlined"
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -152,6 +198,7 @@ const Login = () => {
                 variant="outlined"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -181,18 +228,20 @@ const Login = () => {
 
               <Button 
                 fullWidth 
+                type="submit"
                 variant="contained" 
                 size="large" 
-                onClick={handleLogin} // This is the 'door handle'
+                disabled={loading}
                 sx={{ py: 1.5, mt: 2, fontWeight: 'bold' }}
               >
-                SE CONNECTER
+                {loading ? 'CONNEXION EN COURS...' : 'SE CONNECTER'}
               </Button>
-            </form>
+            </Box>
           </Paper>
         </Box>
       </Container>
 
+      {/* --- FOOTER --- */}
       <Box
         component="footer"
         sx={{
