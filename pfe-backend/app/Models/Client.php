@@ -13,7 +13,8 @@ class Client extends Model
         'telephone',
         'adresse',
         'numero_tva',
-        'notes'
+        'notes',
+        'statut'
     ];
 
     public function factures()

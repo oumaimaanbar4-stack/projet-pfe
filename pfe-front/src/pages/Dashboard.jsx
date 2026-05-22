@@ -32,7 +32,7 @@ const Dashboard = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {/* Green date badge — matches dark screenshot */}
             <Chip
-              label="Avril 2026"
+              label={new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
               sx={{
                 bgcolor: '#10b981',
                 color: 'white',
@@ -41,6 +41,7 @@ const Dashboard = () => {
                 height: 32,
                 borderRadius: '8px',
                 px: 0.5,
+                textTransform: 'capitalize',
               }}
             />
 

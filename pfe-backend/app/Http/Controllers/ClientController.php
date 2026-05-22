@@ -9,7 +9,22 @@ class ClientController extends Controller
 {
     public function index()
     {
-        return response()->json(Client::withCount('factures')->get());
+        $clients = Client::withCount('factures')
+            ->with('factures:id,client_id,statut')
+            ->get()
+            ->map(function ($client) {
+                $factures = $client->factures;
+                if ($factures->isEmpty()) {
+                    $client->statut = 'Inactif';
+                } elseif ($factures->contains('statut', 'en_retard')) {
+                    $client->statut = 'En retard';
+                } else {
+                    $client->statut = 'Actif';
+                }
+                return $client;
+            });
+
+        return response()->json($clients);
     }
 
     public function store(Request $request)

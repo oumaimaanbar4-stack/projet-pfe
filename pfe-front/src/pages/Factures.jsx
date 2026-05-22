@@ -144,6 +144,7 @@ export default function Factures() {
         client_id:      form.client_id,
         date_emission:  form.dateEmission,
         date_echeance:  form.dateEcheance,
+        statut:         form.statut,
         taxe:           form.tax,
         remise:         form.discount,
         notes:          form.notes,

@@ -11,7 +11,12 @@ class DashboardController extends Controller
     public function stats()
     {
         return response()->json([
-            'total_revenue'  => Paiement::sum('montant'),
+            // Total of ALL factures (not just paid)
+            'total_revenue'  => Facture::sum('total'),
+
+            // Only paid
+            'paid_revenue'   => Facture::where('statut', 'payée')->sum('total'),
+
             'total_clients'  => Client::count(),
             'total_invoices' => Facture::count(),
             'pending_amount' => Facture::where('statut', 'en_attente')->sum('total'),

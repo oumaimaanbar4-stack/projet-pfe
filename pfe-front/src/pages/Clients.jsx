@@ -20,8 +20,7 @@ import WarningAmberRoundedIcon       from '@mui/icons-material/WarningAmberRound
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
 import FilterListRoundedIcon         from '@mui/icons-material/FilterListRounded';
 
-const VILLES  = ['Casablanca','Rabat','Salé','Marrakech','Fès','Tanger','Agadir','Meknès'];
-const STATUTS = ['Actif','Inactif','En retard'];
+const STATUTS = ['Actif', 'Inactif', 'En retard'];
 
 const STATUT_STYLE = {
   'Actif':     { bg: '#d1fae5', color: '#065f46', dot: '#10b981' },
@@ -29,7 +28,10 @@ const STATUT_STYLE = {
   'En retard': { bg: '#fee2e2', color: '#991b1b', dot: '#ef4444' },
 };
 
-const EMPTY_FORM = { nom: '', email: '', telephone: '', adresse: '', societe: '', numero_tva: '', notes: '' };
+const EMPTY_FORM = {
+  nom: '', email: '', telephone: '', adresse: '',
+  societe: '', numero_tva: '', notes: '',
+};
 
 const avatarColor = (name = '') => {
   const palette = ['#10b981','#3b82f6','#8b5cf6','#f59e0b','#ef4444','#06b6d4','#ec4899'];
@@ -78,7 +80,7 @@ export default function Clients() {
     total:   rows.length,
     actifs:  rows.filter(r => r.statut === 'Actif').length,
     retard:  rows.filter(r => r.statut === 'En retard').length,
-    caTotal: rows.reduce((s, r) => s + (parseFloat(r.total_facture) || 0), 0),
+    inactifs: rows.filter(r => r.statut === 'Inactif').length,
   }), [rows]);
 
   const filtered = useMemo(() => {
@@ -97,13 +99,17 @@ export default function Clients() {
 
   const toast      = (msg, severity = 'success') => setSnack({ open: true, msg, severity });
   const openCreate = () => { setEditTarget(null); setForm(EMPTY_FORM); setFormErrors({}); setDrawerOpen(true); };
-  const openEdit   = (row) => {
+
+  const openEdit = (row) => {
     setEditTarget(row);
     setForm({
-      nom: row.nom || '', email: row.email || '',
-      telephone: row.telephone || '', adresse: row.adresse || '',
-      societe: row.societe || '', numero_tva: row.numero_tva || '',
-      notes: row.notes || '',
+      nom:        row.nom        || '',
+      email:      row.email      || '',
+      telephone:  row.telephone  || '',
+      adresse:    row.adresse    || '',
+      societe:    row.societe    || '',
+      numero_tva: row.numero_tva || '',
+      notes:      row.notes      || '',
     });
     setFormErrors({});
     setDrawerOpen(true);
@@ -111,8 +117,8 @@ export default function Clients() {
 
   const validate = () => {
     const e = {};
-    if (!form.nom.trim())   e.nom   = 'Nom requis';
-    if (!form.email.trim()) e.email = 'Email requis';
+    if (!form.nom.trim())       e.nom       = 'Nom requis';
+    if (!form.email.trim())     e.email     = 'Email requis';
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Email invalide';
     if (!form.telephone.trim()) e.telephone = 'Téléphone requis';
     setFormErrors(e);
@@ -124,11 +130,14 @@ export default function Clients() {
     try {
       if (editTarget) {
         const res = await api.put(`/clients/${editTarget.id}`, form);
-        setRows(prev => prev.map(r => r.id === editTarget.id ? res.data : r));
+        // Re-fetch to get updated computed statut
+        const refreshed = await api.get('/clients');
+        setRows(refreshed.data);
         toast('Client modifié avec succès');
       } else {
-        const res = await api.post('/clients', form);
-        setRows(prev => [...prev, res.data]);
+        await api.post('/clients', form);
+        const refreshed = await api.get('/clients');
+        setRows(refreshed.data);
         toast('Client créé avec succès');
       }
       setDrawerOpen(false);
@@ -182,6 +191,18 @@ export default function Clients() {
     {
       field: 'telephone', headerName: 'Téléphone', flex: 1, minWidth: 160,
       renderCell: ({ value }) => <Typography sx={{ fontSize: '0.8rem', color: '#64748b' }}>{value || '—'}</Typography>,
+    },
+    {
+      field: 'statut', headerName: 'Statut', width: 130,
+      renderCell: ({ value }) => {
+        const s = STATUT_STYLE[value] || STATUT_STYLE['Inactif'];
+        return (
+          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, px: 1.2, py: 0.4, borderRadius: 10, bgcolor: s.bg }}>
+            <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: s.dot }} />
+            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: s.color }}>{value}</Typography>
+          </Box>
+        );
+      },
     },
     {
       field: 'factures_count', headerName: 'Factures', width: 110,
@@ -240,8 +261,8 @@ export default function Clients() {
         <Box sx={{ display: 'flex', gap: 2.5, mb: 4, flexWrap: 'wrap' }}>
           <StatCard icon={<PeopleAltRoundedIcon sx={{ fontSize: 18 }} />} label="Total clients" value={stats.total} color="#3b82f6" sub="dans la base" />
           <StatCard icon={<CheckCircleOutlineRoundedIcon sx={{ fontSize: 18 }} />} label="Clients actifs" value={stats.actifs} color="#10b981" sub={`${Math.round((stats.actifs / (stats.total || 1)) * 100)}% du total`} />
-          <StatCard icon={<WarningAmberRoundedIcon sx={{ fontSize: 18 }} />} label="En retard" value={stats.retard} color="#ef4444" sub="paiements en attente" />
-          <StatCard icon={<TrendingUpRoundedIcon sx={{ fontSize: 18 }} />} label="CA total" value={`${stats.caTotal.toLocaleString('fr-MA')} DH`} color="#8b5cf6" sub="tous clients confondus" />
+          <StatCard icon={<WarningAmberRoundedIcon sx={{ fontSize: 18 }} />} label="En retard" value={stats.retard} color="#ef4444" sub="paiements en retard" />
+          <StatCard icon={<TrendingUpRoundedIcon sx={{ fontSize: 18 }} />} label="Inactifs" value={stats.inactifs} color="#8b5cf6" sub="sans factures" />
         </Box>
 
         <Box sx={{ bgcolor: 'white', border: '1px solid #e2e8f0', borderRadius: 3, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, p: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
